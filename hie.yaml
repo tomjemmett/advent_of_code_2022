@@ -1,10 +1,10 @@
 cradle:
   cabal:
     - path: "src"
-      component: "lib:aoc2021"
+      component: "lib:aoc2022"
 
     - path: "app/Main.hs"
-      component: "aoc2021:exe:aoc2021"
+      component: "aoc2022:exe:aoc2022"
 
     - path: "test"
-      component: "aoc2021:test:spec"
+      component: "aoc2022:test:spec"
