@@ -8,5 +8,5 @@ This is my attempt at solving this year's Advent of Code, in [Haskell](https://w
 
 ## How to run
 
-- `cabal run` will run all of the day's, giving you all of the solutions.
+- `cabal run aoc2022` will run all of the days, giving you all of the solutions.
 - `cabal test` will run the test suite, ensuring that the results are correct (first against the provided sample, then against the actual result).
