@@ -1,0 +1,71 @@
+cabal-version:      2.4
+name:               aoc2022
+version:            0.0.1
+
+-- A short (one-line) description of the package.
+-- synopsis:
+
+-- A longer description of the package.
+-- description:
+
+-- A URL where users can report bugs.
+-- bug-reports:
+
+-- The license under which the package is released.
+-- license:
+author:             Tom Jemmett
+maintainer:         thomas.jemmett@nhs.net
+
+common shared-properties
+    build-depends:
+        base ^>=4.15.0.0,
+        array,
+        containers,
+        unordered-containers,
+        parsec,
+        vector,
+        mtl,
+        bifunctors,
+        hashable,
+        pqueue,
+        array,
+        directory,
+        split
+    default-extensions:
+        BlockArguments
+        FlexibleContexts
+        FlexibleInstances
+        LambdaCase
+        MultiWayIf
+        TypeApplications
+        TupleSections
+    default-language: Haskell2010
+
+library
+    import:           shared-properties
+    exposed-modules:
+        Days
+        Common
+    other-modules:
+        Day01
+    hs-source-dirs:   src
+
+executable aoc2022
+    import:           shared-properties
+    main-is:          Main.hs
+    build-depends:
+        aoc2022
+    hs-source-dirs:   app
+
+test-suite spec
+    import:           shared-properties
+    type:             exitcode-stdio-1.0
+    other-modules:
+        Day01Spec
+        SpecHelper
+    hs-source-dirs:   test
+    main-is:          Spec.hs
+    build-depends:
+        hspec >= 2.7,
+        hspec-discover >= 2.7,
+        aoc2022
