@@ -3,67 +3,26 @@ module Day02 (
 ) where
 
 import Common
-import Data.Maybe (fromMaybe)
+import Data.Char (ord)
 import qualified Data.Map as M
 
-type Input = [(String, Int)]
-type Scores = M.Map String Int
+type Pair = (Int, Int)
+type Input = [(Pair, Int)]
+type Part = Pair -> Int
 
 day02 :: AOCSolution
-day02 input = [show $ part1 i, show $ part2 i]
-  where
-    i = parseInput input
+day02 input = show <$> (go <$> [part1, part2] <*> pure (parseInput input))
 
 parseInput :: String -> Input
-parseInput = M.toList . M.fromListWith (+) . map (,1) . lines
-
-part1 :: Input -> Int
-part1 [] = 0
-part1 ((x, y):xs) = r + part1 xs
+parseInput = M.toList . M.fromListWith (+) . map f . lines
   where
-    r = (s M.! x) * y
-    s = scores getResult
-    getResult :: (Char, Char) -> Int
-    getResult (x, y) = r + y' + 1
-      where
-        getN = \case
-          'A' -> 0
-          'X' -> 0
-          'B' -> 1
-          'Y' -> 1
-          'C' -> 2
-          'Z' -> 2
-        x' = getN x
-        y' = getN y
-        r = case mod (y' - x') 3 of
-          0 -> 3 -- draw
-          1 -> 6 -- win
-          2 -> 0 -- lose
+    f (x:_:y:[]) = ((ord x - 65, ord y - 88), 1)
 
+go :: Part -> Input -> Int
+go _ [] = 0
+go fn ((x, y):xs) = (fn x) * y + go fn xs
 
-part2 :: Input -> Int
-part2 [] = 0
-part2 ((x, y):xs) = r + part2 xs
-  where
-    r = (s M.! x) * y
-    s = scores getResult
-    getResult :: (Char, Char) -> Int
-    getResult = \case
-      ('A', 'X') -> 3 -- lose with scissors
-      ('A', 'Y') -> 4 -- draw with rock
-      ('A', 'Z') -> 8 -- win with paper
-      ('B', 'X') -> 1 -- lose with rock
-      ('B', 'Y') -> 5 -- draw with paper
-      ('B', 'Z') -> 9 -- win with scissors
-      ('C', 'X') -> 2 -- lose with paper
-      ('C', 'Y') -> 6 -- draw with scissors
-      ('C', 'Z') -> 7 -- win with rock
-
-scores :: ((Char, Char) -> Int) -> Scores
-scores getResult = M.fromList $ zip (map (\(x, y) -> x:' ':[y]) hands) results
-  where
-    hands = (,) <$> ['A'..'C'] <*> ['X'..'Z']
-    results = map getResult hands
-
-
-
+part1 :: Part
+part2 :: Part
+part1 (x1, x2) = ((x2 - x1 + 1) `mod` 3) * 3 + (x2 + 1)
+part2 (x1, x2) = ((x1 + x2 + 2) `mod` 3) + 1 + (x2 * 3) 
