@@ -1,32 +1,43 @@
 module Day05 (
-  day05
+  day05,
+  parseCrates,
+  parseMoves
 ) where
 
 import Common
+import Control.Monad.State
 import Data.Maybe (catMaybes)
 import Data.List (group)
 import Data.List.Split (splitOn)
 import qualified Data.Map as M
 import qualified Text.Parsec as P
 import Text.Parsec ((<|>))
+import Text.Parsec.String (Parser)
 
 type Move = (Int, Int, Int)
-type State = M.Map Int String
+type Crates = M.Map Int String
 
 day05 :: AOCSolution
 day05 input = go <$> [reverse, id] <*> parseInput input
 
-go :: (String -> String) -> (State, [Move]) -> String
-go f = map (head . snd) . M.toList . uncurry (foldl (move f))
-
-move :: (String -> String) -> State -> Move -> State
-move f m0 (n, x, y) = m2 $ m1 $ m0
+go :: (String -> String) -> (Crates, [Move]) -> String
+go f (s, m) = map (head . snd) . M.toList . execState t $ s
   where
-    (a, b) = splitAt n $ m0 M.! x
-    m1 = M.insertWith (++) y (f a)
-    m2 = M.insert x b
+    t = traverse (move f) m
 
-parseInput :: Applicative f => String -> f (State, [Move])
+move :: (String -> String) -> Move -> State Crates ()
+move f (n, x, y) = push y =<< pop f n x
+  where
+    pop :: (String -> String) -> Int -> Int -> State Crates String
+    pop f n x = do
+      s <- get
+      let (a, b) = splitAt n $ s M.! x
+      put $ M.insert x b s
+      pure $ f a
+    push :: Int -> String -> State Crates ()
+    push y v = modify $ M.insertWith (++) y v
+
+parseInput :: Applicative f => String -> f (Crates, [Move])
 parseInput = pure . parse' p id
   where
     p = do
@@ -36,6 +47,7 @@ parseInput = pure . parse' p id
       moves <- parseMoves
       pure (rows, moves)
 
+parseCrates :: Parser Crates
 parseCrates = M.fromListWith (++) . reverse . concat <$> pRows
   where
     pRows  =  pRow `P.sepBy` P.newline
@@ -44,6 +56,7 @@ parseCrates = M.fromListWith (++) . reverse . concat <$> pRows
     pEmpty = P.try $ const Nothing <$> P.string "   "
     pFull  = P.char '[' *> (Just . (:[]) <$> P.letter) <* P.char ']'
 
+parseMoves :: Parser [Move]
 parseMoves = pMove `P.sepEndBy` P.newline
   where
     -- parse the moves
