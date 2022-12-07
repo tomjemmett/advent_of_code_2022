@@ -1,6 +1,7 @@
-module Day06 (
-  day06
-) where
+module Day06
+  ( day06,
+  )
+where
 
 import Common
 import Data.List (nub)
@@ -12,5 +13,5 @@ day06 input = go . f <$> [4, 14] <*> pure input
 
 go :: (Int, Int) -> String -> String
 go (i, n) x
-  | (length $ nub $ take n x) == n = show i
+  | length (nub $ take n x) == n = show i
   | otherwise = go (succ i, n) $ drop 1 x

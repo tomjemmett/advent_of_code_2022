@@ -1,20 +1,22 @@
-module Day05 (
-  day05,
-  parseCrates,
-  parseMoves
-) where
+module Day05
+  ( day05,
+    parseCrates,
+    parseMoves,
+  )
+where
 
 import Common
 import Control.Monad.State
-import Data.Maybe (catMaybes)
 import Data.List (group)
 import Data.List.Split (splitOn)
 import qualified Data.Map as M
-import qualified Text.Parsec as P
+import Data.Maybe (catMaybes)
 import Text.Parsec ((<|>))
+import qualified Text.Parsec as P
 import Text.Parsec.String (Parser)
 
 type Move = (Int, Int, Int)
+
 type Crates = M.Map Int String
 
 day05 :: AOCSolution
@@ -50,17 +52,17 @@ parseInput = pure . parse' p id
 parseCrates :: Parser Crates
 parseCrates = M.fromListWith (++) . reverse . concat <$> pRows
   where
-    pRows  =  pRow `P.sepBy` P.newline
-    pRow   = catMaybes . zipWith (\x -> fmap (x,)) [1..] <$> pCrate `P.sepBy` P.char ' '
+    pRows = pRow `P.sepBy` P.newline
+    pRow = catMaybes . zipWith (\x -> fmap (x,)) [1 ..] <$> pCrate `P.sepBy` P.char ' '
     pCrate = pEmpty <|> pFull
-    pEmpty = P.try $ const Nothing <$> P.string "   "
-    pFull  = P.char '[' *> (Just . (:[]) <$> P.letter) <* P.char ']'
+    pEmpty = P.try $ Nothing <$ P.string "   "
+    pFull = P.char '[' *> (Just . (: []) <$> P.letter) <* P.char ']'
 
 parseMoves :: Parser [Move]
 parseMoves = pMove `P.sepEndBy` P.newline
   where
     -- parse the moves
-    pMove = do 
+    pMove = do
       P.string "move "
       n <- number
       P.string " from "

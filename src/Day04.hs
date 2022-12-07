@@ -1,9 +1,12 @@
-module Day04 (
-  day04
-) where
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+
+module Day04
+  ( day04,
+  )
+where
 
 import Common
-import Data.List (sort, group)
+import Data.List (group, sort)
 import Data.List.Split (splitOn)
 
 data Overlaps = None | Full | Partial deriving (Show, Eq, Ord)
@@ -20,9 +23,9 @@ parseInput = map splitLine . lines
     splitLine = map splitRange . splitOn ","
 
 overlaps :: [[Int]] -> Overlaps
-overlaps [[a,b],[c,d]]
+overlaps [[a, b], [c, d]]
   | a <= c && b >= d = Full
   | c <= a && d >= b = Full
   | a <= d && b >= c = Partial
   | d <= a && c >= b = Partial
-  | otherwise        = None
+  | otherwise = None
