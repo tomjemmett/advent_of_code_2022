@@ -1,10 +1,7 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Day07
-  ( day07,
-    parseInput,
-    go,
-    testInput,
+  ( day07
   )
 where
 
@@ -15,31 +12,6 @@ import qualified Data.Map as M
 import Text.Parsec ((<|>))
 import qualified Text.Parsec as P
 import Text.Parsec.String (Parser)
-
-testInput =
-  "$ cd /\n\
-  \$ ls\n\
-  \dir a\n\
-  \14848514 b.txt\n\
-  \8504156 c.dat\n\
-  \dir d\n\
-  \$ cd a\n\
-  \$ ls\n\
-  \dir e\n\
-  \29116 f\n\
-  \2557 g\n\
-  \62596 h.lst\n\
-  \$ cd e\n\
-  \$ ls\n\
-  \584 i\n\
-  \$ cd ..\n\
-  \$ cd ..\n\
-  \$ cd d\n\
-  \$ ls\n\
-  \4060174 j\n\
-  \8033020 d.log\n\
-  \5626152 d.ext\n\
-  \7214296 k"
 
 data CLI = Cd String | Ls | File (Int, String) | Dir String deriving (Show)
 
