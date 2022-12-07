@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Common where
 
 import Data.Foldable (toList)
