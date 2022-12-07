@@ -2,16 +2,44 @@
 
 module Day07
   ( day07,
+    parseInput,
+    go,
+    testInput,
   )
 where
 
 import Common
 import Control.Monad.State
-import Data.Bifunctor
+import Data.List
 import qualified Data.Map as M
 import Text.Parsec ((<|>))
 import qualified Text.Parsec as P
 import Text.Parsec.String (Parser)
+
+testInput =
+  "$ cd /\n\
+  \$ ls\n\
+  \dir a\n\
+  \14848514 b.txt\n\
+  \8504156 c.dat\n\
+  \dir d\n\
+  \$ cd a\n\
+  \$ ls\n\
+  \dir e\n\
+  \29116 f\n\
+  \2557 g\n\
+  \62596 h.lst\n\
+  \$ cd e\n\
+  \$ ls\n\
+  \584 i\n\
+  \$ cd ..\n\
+  \$ cd ..\n\
+  \$ cd d\n\
+  \$ ls\n\
+  \4060174 j\n\
+  \8033020 d.log\n\
+  \5626152 d.ext\n\
+  \7214296 k"
 
 data CLI = Cd String | Ls | File (Int, String) | Dir String deriving (Show)
 
@@ -22,40 +50,30 @@ type DirStructure = M.Map DirPath ([DirPath], Int)
 day07 :: AOCSolution
 day07 input = show <$> ([part1, part2] <*> pure i)
   where
-    i = updateSizes [] $ parseInput input
+    i = go $ parseInput input
 
-part1 :: DirStructure -> Int
-part1 = sum . filter (<= 100000) . map snd . M.elems
+part1 :: [Int] -> Int
+part1 = sum . filter (<= 100000)
 
-part2 :: DirStructure -> Int
+part2 :: [Int] -> Int
 part2 i = minimum d
   where
-    f = 70000000 - snd (i M.! ["/"])
+    f = 70000000 - head i
     n = 30000000 - f
-    d = filter (>= n) $ map (snd . snd) $ M.toList i
+    d = filter (>= n) i
 
-updateSizes :: [DirPath] -> DirStructure -> DirStructure
-updateSizes done m
-  | (fst . head) k == ["/"] = m
-  | otherwise = updateSizes done' m'
+go :: DirStructure -> [Int]
+go = snd . flip f ["/"]
   where
-    k =
-      filter (not . flip elem done . fst)
-        . map (second snd)
-        . M.toList
-        . M.filter ((== []) . fst)
-        $ m
-    t = traverse fn k
-    m' = execState t m
-    done' = foldr ((:) . fst) done k
-    fn :: ([String], Int) -> State (M.Map [String] ([[String]], Int)) ()
-    fn (d, s) = do
-      m <- get
-      let (p, (dirs, ps)) = head . M.toList . M.filter (elem d . fst) $ m
-          dirs' = filter (/= d) dirs
-          ps' = ps + s
-      put $ M.insert p (dirs', ps') m
-      pure ()
+    f :: DirStructure -> DirPath -> (Int, [Int])
+    f m d =
+      if null dirs
+        then (size, [size])
+        else (r, r : concatMap snd ds)
+      where
+        (dirs, size) = m M.! d
+        ds = map (f m) dirs
+        r = size + sum (map fst ds)
 
 parseInput :: String -> DirStructure
 parseInput = M.fromList . navigate [] . map (parse' pCLI id) . lines
