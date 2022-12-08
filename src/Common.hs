@@ -62,7 +62,10 @@ parseGrid2d :: String -> Grid2d
 parseGrid2d = V.fromList . map V.fromList . map2 digitToInt . lines
 
 lookupInGrid2d :: Grid2d -> Point2d -> Int
-lookupInGrid2d i (r, c) = fromMaybe 9 $ i !? r >>= flip (!?) c
+lookupInGrid2d i = fromMaybe 9 . lookupInGrid2d' i
+
+lookupInGrid2d' :: Grid2d  -> Point2d  -> Maybe Int
+lookupInGrid2d' i (r, c) = i V.!? r >>= flip (V.!?) c
 
 point2dNeighbours :: Point2d -> [Point2d]
 point2dNeighbours (r, c) = [(pred r, c), (succ r, c), (r, pred c), (r, succ c)]

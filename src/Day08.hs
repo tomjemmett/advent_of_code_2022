@@ -3,44 +3,35 @@ module Day08 (
 ) where
 
 import Common
-import qualified Data.Vector as V
+import Data.Bifunctor (bimap)
+import Data.Either (isLeft)
 import Data.List (transpose, splitAt)
-
-type Trees = ([[Int]], [[Int]])
-type Part = Int -> Trees -> [(Int, Int)] -> Int
+import qualified Data.Vector as V
 
 day08 :: AOCSolution
-day08 input = go <$> [part1, part2] <*> parseInput input
+day08 input = show <$> ([part1, part2] <*> parseInput input)
 
-parseInput :: Applicative f => String -> f Trees
-parseInput input = pure (transpose i, i)
+parseInput :: Applicative f => String -> f [[Either Int Int]]
+parseInput input = pure $ countTrees trees <$> ((,) <$> [1..x] <*> [1..y])
   where
-    i = V.toList $ V.toList <$> parseGrid2d input
+    trees = parseGrid2d input
+    x = length trees
+    y = length $ trees V.! 1
 
-go :: Part -> Trees -> String
-go f trees = show $ f v trees [(i, j) | i <- [1..(x - 2)], j <- [1..(y - 2)]]
+countTrees :: Grid2d -> Point2d -> [Either Int Int]
+countTrees trees p = f <$> cij
   where
-    x = length $ fst trees
-    y = length $ fst trees !! 1
-    v = x * 2 + (y - 2) * 2
+    cij = uncurry bimap <$> [(pred, id), (succ, id), (id, pred), (id, succ)]
+    t = lookupInGrid2d trees p
+    f c = iterate 0 trees t (c p) c
+    iterate :: Int -> Grid2d -> Int -> Point2d -> (Point2d -> Point2d) -> Either Int Int
+    iterate n trees t p cij = case (t >) <$> lookupInGrid2d' trees p of
+      Nothing   -> Left n
+      Just True -> iterate (succ n) trees t (cij p) cij
+      _         -> Right $ succ n
 
-part1 :: Part
-part1 v (a, b) = (v+) . countTrue id . map f
-  where
-    f (i, j) = any (t >) $ maximum <$> [l, r, u, d]
-      where
-        (l, t:r) = splitAt j $ a !! i
-        (u, _:d) = splitAt i $ b !! j
+part1 :: [[Either Int Int]] -> Int
+part1 = countTrue id . map (any isLeft)
 
-part2 :: Part
-part2 _ (a, b) = maximum . map f
-  where
-    f (i, j) = product $ countTrees 0 t <$> [reverse l, r, reverse u, d]
-      where
-        (l, t:r) = splitAt j $ a !! i
-        (u, _:d) = splitAt i $ b !! j
-        countTrees :: Int -> Int -> [Int] -> Int
-        countTrees n _ [] = n
-        countTrees n t (x:xs) = if x < t
-          then countTrees (succ n) t xs
-          else succ n
+part2 :: [[Either Int Int]] -> Int
+part2 = maximum . map (product . map (either id id))
