@@ -32,11 +32,14 @@ common shared-properties
         directory,
         split
     default-extensions:
+        BangPatterns
         BlockArguments
         FlexibleContexts
         FlexibleInstances
+        ImportQualifiedPost
         LambdaCase
         MultiWayIf
+        RecordWildCards
         TypeApplications
         TupleSections
         ViewPatterns
@@ -47,6 +50,7 @@ library
     exposed-modules:
         Days
         Common
+        PathFinding
     other-modules:
         Day01
         Day02
