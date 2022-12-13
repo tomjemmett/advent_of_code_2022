@@ -1,7 +1,6 @@
-module Day11
--- (
---   day11
--- )
+module Day11 (
+  day11
+)
 where
 
 import Common
