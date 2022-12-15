@@ -53,7 +53,13 @@ parse' :: Parser a -> (a -> b) -> String -> b
 parse' p f s = case parse p s of Right x -> f x
 
 number :: Parser Int
-number = read <$> P.many1 P.digit
+number = P.choice [
+  P.char '-' *> fmap negate digits
+  , P.char '+' *> digits
+  , digits
+  ]
+  where
+    digits = read <$> P.many1 P.digit
 
 numbers :: String -> Parser [Int]
 numbers s = number `P.sepBy` (P.many1 . P.oneOf) s
@@ -101,3 +107,6 @@ tuplify3 [a,b,c] = (a,b,c)
 
 sortDesc :: Ord a => [a] -> [a]
 sortDesc = sortBy (flip compare)
+
+manhattanDistance :: Point2d -> Point2d -> Int
+manhattanDistance (x1, y1) (x2, y2) = abs (x1 - x2) + abs (y1 - y2)
