@@ -1,22 +1,26 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
+
 module Common where
 
-import Data.Foldable (toList)
 import Data.Char (digitToInt)
+import Data.Foldable (toList)
 import Data.List (sort, sortBy)
 import Data.List.Split (splitOn)
 import Data.Maybe (fromMaybe)
-
-import qualified Data.Vector as V
 import Data.Vector ((!), (!?))
-
-import qualified Text.Parsec as P
+import Data.Vector qualified as V
+import Text.Parsec qualified as P
 import Text.Parsec.String (Parser)
 
 type AOCSolution = String -> [String]
+
 type Point2d = (Int, Int)
+
 type Point3d = (Int, Int, Int)
+
 type Grid2d = V.Vector (V.Vector Int)
+
+type Interval = (Int, Int)
 
 countTrue :: Foldable f => (a -> Bool) -> f a -> Int
 countTrue p = length . filter p . toList
@@ -40,7 +44,7 @@ bitStringToInt :: String -> Int
 bitStringToInt = bitsToInt . map digitToInt
 
 bitsToInt :: [Int] -> Int
-bitsToInt = sum . zipWith (*) (map (2^) [0..]) . reverse
+bitsToInt = sum . zipWith (*) (map (2 ^) [0 ..]) . reverse
 
 map2 :: (a -> b) -> [[a]] -> [[b]]
 map2 f = map (map f)
@@ -53,11 +57,12 @@ parse' :: Parser a -> (a -> b) -> String -> b
 parse' p f s = case parse p s of Right x -> f x
 
 number :: Parser Int
-number = P.choice [
-  P.char '-' *> fmap negate digits
-  , P.char '+' *> digits
-  , digits
-  ]
+number =
+  P.choice
+    [ P.char '-' *> fmap negate digits,
+      P.char '+' *> digits,
+      digits
+    ]
   where
     digits = read <$> P.many1 P.digit
 
@@ -70,27 +75,31 @@ parseGrid2d = V.fromList . map V.fromList . map2 digitToInt . lines
 lookupInGrid2d :: Grid2d -> Point2d -> Int
 lookupInGrid2d i = fromMaybe 9 . lookupInGrid2d' i
 
-lookupInGrid2d' :: Grid2d  -> Point2d  -> Maybe Int
+lookupInGrid2d' :: Grid2d -> Point2d -> Maybe Int
 lookupInGrid2d' i (r, c) = i V.!? r >>= flip (V.!?) c
 
 point2dNeighbours :: Point2d -> [Point2d]
 point2dNeighbours (r, c) = [(pred r, c), (succ r, c), (r, pred c), (r, succ c)]
 
 point2dNeighboursDiags :: Point2d -> [Point2d]
-point2dNeighboursDiags (r, c) = point2dNeighbours (r, c) ++ [
-  (pred r, pred c), (pred r, succ c),
-  (succ r, pred c), (succ r, succ c)]
+point2dNeighboursDiags (r, c) =
+  point2dNeighbours (r, c)
+    ++ [ (pred r, pred c),
+         (pred r, succ c),
+         (succ r, pred c),
+         (succ r, succ c)
+       ]
 
 sortPoint2d :: [Point2d] -> [Point2d]
 sortPoint2d = sortBy comparePoint2d
 
 comparePoint2d :: Point2d -> Point2d -> Ordering
 comparePoint2d (a, b) (c, d)
-      | a < c     = LT
-      | a > c     = GT
-      | b < d     = LT
-      | b > d     = GT
-      | otherwise = EQ
+  | a < c = LT
+  | a > c = GT
+  | b < d = LT
+  | b > d = GT
+  | otherwise = EQ
 
 median :: Ord a => [a] -> [a]
 median x = if odd lx then [xs !! hl] else [xs !! pred hl, xs !! hl]
@@ -100,13 +109,30 @@ median x = if odd lx then [xs !! hl] else [xs !! pred hl, xs !! hl]
     hl = lx `div` 2
 
 tuplify2 :: [a] -> (a, a)
-tuplify2 [a,b] = (a,b)
+tuplify2 [a, b] = (a, b)
 
 tuplify3 :: [a] -> (a, a, a)
-tuplify3 [a,b,c] = (a,b,c)
+tuplify3 [a, b, c] = (a, b, c)
 
 sortDesc :: Ord a => [a] -> [a]
 sortDesc = sortBy (flip compare)
 
 manhattanDistance :: Point2d -> Point2d -> Int
 manhattanDistance (x1, y1) (x2, y2) = abs (x1 - x2) + abs (y1 - y2)
+
+intervalsIntersect :: Interval -> Interval -> Bool
+intervalsIntersect (a1, a2) (b1, b2) =
+  or
+    [ a1 <= b1 && a2 >= b1,
+      a1 <= b1 && a2 >= b2,
+      a1 >= b1 && a2 <= b2,
+      a1 >= b1 && a2 >= b1
+    ]
+
+reduceIntervals :: [Interval] -> [Interval]
+reduceIntervals [b] = [b]
+reduceIntervals (a@(a1, a2) : b@(b1, b2) : xs)
+  | intervalsIntersect a b = reduceIntervals ((min a1 b1, max a2 b2) : xs)
+  | otherwise = a : reduceIntervals (b : xs)
+  where
+    i = intervalsIntersect a b
