@@ -30,7 +30,8 @@ common shared-properties
         pqueue,
         array,
         directory,
-        split
+        split,
+        fgl
     default-extensions:
         BangPatterns
         BlockArguments
