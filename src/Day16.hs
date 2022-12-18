@@ -4,74 +4,76 @@ module Day16
 where
 
 import Common
-import Data.Char (isUpper)
-import Data.Function ((&))
-import Data.Graph.Inductive hiding ((&))
+import Data.Bifunctor (first)
 import Data.List (foldl', maximumBy)
-import Data.List.Split (splitOn)
 import Data.Map.Strict qualified as M
 import Data.Ord (comparing)
 import Data.Set qualified as S
 import Data.Tree qualified as T
+import PathFinding
+import Text.Parsec ((<|>))
+import Text.Parsec qualified as P
+import Text.Parsec.String (Parser)
 
 day16 :: AOCSolution
-day16 input = show <$> [p1 i, p2 i]
+day16 input = show <$> ([part1, part2] <*> parseInput input)
+
+parseInput :: Applicative f => String -> f [(String, (Int, [String]))]
+parseInput = pure . map (parse' p id) . lines
   where
-    i = parseInput input
+    p = do
+      v <- P.string "Valve " *> P.many1 P.letter
+      r <- P.string " has flow rate=" *> number
+      P.try (P.string "; tunnels lead to valves ")
+        <|> P.string "; tunnel leads to valve "
+      vs <- P.many P.letter `P.sepBy` P.string ", "
+      pure (v, (r, vs))
 
-each :: [a] -> (a -> b) -> [b]
-each = flip map
+getVertices :: [(String, (Int, [String]))] -> M.Map String Int
+getVertices = M.filter (> 0) . M.map fst . M.fromList
 
-parseInput :: String -> (Node, M.Map Node Int, M.Map Node (M.Map Node Int))
-parseInput inp = (start, valves, dists)
+getEdges :: [(String, (Int, [String]))] -> M.Map String [(Int, String)]
+getEdges = M.map (map (1,) . snd) . M.fromList
+
+distanceTable :: [(String, (Int, [String]))] -> M.Map String (M.Map String Int)
+distanceTable i = M.fromList do
+  let v = M.keys $ getVertices i
+      e = getEdges i
+      f = (M.!) e
+  k1 <- "AA" : v
+  let p = [(k2,) $ fst $ last $ unsafeFindPath f k1 k2 | k2 <- v, k1 /= k2]
+  pure (k1, M.fromList p)
+
+stateTree :: Int -> [(String, (Int, [String]))] -> M.Map String Int -> T.Tree (String, Int)
+stateTree maxT i valves = T.unfoldTree buildNode (1, start, M.empty)
   where
-    xs = M.fromList . map (\(i, (v, r, vs)) -> (v, (i, r, vs))) . zip [0 ..] . map pLine $ lines inp
-    pLine
-      ( splitOn ";" ->
-          [ words -> [_, v, _, _, read . drop 5 -> r],
-            splitOn ", " . dropWhile (not . isUpper) -> vs
-            ]
-        ) = (v, r, vs)
-
-    gr = undir $ foldl' f empty xs :: Gr Int ()
-    f acc (i, r, vs) =
-      acc
-        & insNode (i, r)
-        & insEdges [(i, j, ()) | w <- vs, let (j, _, _) = xs M.! w]
-
-    (start, _, _) = xs M.! "AA"
-    valves = M.fromList . map (\(u, r, _) -> (u, r)) . filter (\(_, r, _) -> r > 0) $ M.elems xs
-    dists = M.fromList . each (start : M.keys valves) $ \i ->
-      ( i,
-        M.fromList . each (bft i gr) $ \p ->
-          (head p, length p - 1)
-      )
-
-stateTree :: Int -> M.Map Node (M.Map Node Int) -> Node -> M.Map Node Int -> T.Tree (Node, Int)
-stateTree maxT dists start valves = T.unfoldTree buildNode (1, start, M.empty)
-  where
-    nextStates (t, v, zs) =
-      if
-          | t >= maxT ->
-            []
-          | v /= start && v `M.notMember` zs ->
-            [(t + 1, v, M.insert v ((maxT - t) * valves M.! v) zs)]
-          | otherwise ->
-            [(t + dists M.! v M.! w, w, zs) | w <- M.keys valves, w `M.notMember` zs]
-    buildNode (t, v, zs) =
-      let succs = nextStates (t, v, zs)
-       in ((v, if null succs then foldl' (+) 0 zs else 0), succs)
+    dists = distanceTable i
+    start = "AA"
+    nextStates (t, v, zs)
+      | t >= maxT = []
+      | v /= start && v `M.notMember` zs = [(t + 1, v, M.insert v ((maxT - t) * valves M.! v) zs)]
+      | otherwise =
+        [ (t + dists M.! v M.! w, w, zs)
+          | w <- M.keys valves,
+            w `M.notMember` zs
+        ]
+    buildNode (t, v, zs) = ((v, if null succs then foldl' (+) 0 zs else 0), succs)
+      where
+        succs = nextStates (t, v, zs)
 
 leaves :: T.Tree (a, b) -> [([a], b)]
 leaves (T.Node (n, v) []) = [([n], v)]
-leaves (T.Node (n, _) xs) = map (\(ns, v) -> (n : ns, v)) $ concatMap leaves xs
+leaves (T.Node (n, _) xs) = map (first (n :)) $ concatMap leaves xs
 
-p1 (s, vs, dists) = maximum . map snd . leaves $ tr
+part1 :: [(String, (Int, [String]))] -> Int
+part1 i = maximum . map snd . leaves $ tr
   where
-    tr = stateTree 30 dists s vs
+    tr = stateTree 30 i $ getVertices i
 
-p2 (s, vs1, dists) = f1 + f2
+part2 :: [(String, (Int, [String]))] -> Int
+part2 i = f1 + f2
   where
-    (p, f1) = maximumBy (comparing snd) . leaves $ stateTree 26 dists s vs1
+    vs1 = getVertices i
+    (p, f1) = maximumBy (comparing snd) . leaves $ stateTree 26 i vs1
     vs2 = vs1 `M.withoutKeys` S.fromList p
-    (_, f2) = maximumBy (comparing snd) . leaves $ stateTree 26 dists s vs2
+    (_, f2) = maximumBy (comparing snd) . leaves $ stateTree 26 i vs2
