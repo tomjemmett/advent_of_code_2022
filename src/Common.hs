@@ -25,6 +25,9 @@ type Interval = (Int, Int)
 countTrue :: Foldable f => (a -> Bool) -> f a -> Int
 countTrue p = length . filter p . toList
 
+isBetween :: Ord a => (a, a) -> a -> Bool
+isBetween (l, r) v = v >= l && v <= r
+
 linesRead :: Read a => String -> [a]
 linesRead = map read . lines
 
@@ -90,6 +93,16 @@ point2dNeighboursDiags (r, c) =
          (succ r, succ c)
        ]
 
+point3dNeighbours :: Point3d -> [Point3d]
+point3dNeighbours (x, y, z) =
+  [ (pred x, y, z),
+    (succ x, y, z),
+    (x, pred y, z),
+    (x, succ y, z),
+    (x, y, pred z),
+    (x, y, succ z)
+  ]
+
 sortPoint2d :: [Point2d] -> [Point2d]
 sortPoint2d = sortBy comparePoint2d
 
@@ -111,8 +124,14 @@ median x = if odd lx then [xs !! hl] else [xs !! pred hl, xs !! hl]
 tuplify2 :: [a] -> (a, a)
 tuplify2 [a, b] = (a, b)
 
+untuplify2 :: (a, a) -> [a]
+untuplify2 (a, b) = [a, b]
+
 tuplify3 :: [a] -> (a, a, a)
 tuplify3 [a, b, c] = (a, b, c)
+
+untuplify3 :: (a, a, a) -> [a]
+untuplify3 (a, b, c) = [a, b, c]
 
 sortDesc :: Ord a => [a] -> [a]
 sortDesc = sortBy (flip compare)
