@@ -4,7 +4,6 @@ module Day20
 where
 
 import Common
-import Control.Monad.State
 import Data.Maybe (fromJust)
 import Data.Vector qualified as V
 
@@ -34,19 +33,17 @@ go (0, i, s) = solve i s
 go (t, i, s) = go (pred t, i, decrypt i s)
 
 decrypt :: V.Vector Int -> V.Vector Int -> V.Vector Int
-decrypt i = execState (traverse run zpd)
+decrypt nums state = foldl run state zpd
   where
-    l = pred $ V.length i
+    l = pred $ V.length nums
     inds = V.fromList [0 .. l]
-    zpd = V.zip inds i
-    run :: (Int, Int) -> State (V.Vector Int) ()
-    run (i, n) = do
-      inds <- get
-      let j = fromJust $ i `V.elemIndex` inds
-          inds' = removeAtN j inds
-          n' = (l + j + n) `mod` l
-      put $ insertAtN n' i inds'
-      pure ()
+    zpd = V.zip inds nums
+    run :: V.Vector Int -> (Int, Int) -> V.Vector Int
+    run inds (i, n) = insertAtN n' i inds'
+      where
+        j = fromJust $ i `V.elemIndex` inds
+        inds' = removeAtN j inds
+        n' = (l + j + n) `mod` l
 
 solve :: V.Vector Int -> V.Vector Int -> Int
 solve n v = sum $ (n V.!) . (v V.!) . (`mod` V.length v) . (+ z) <$> [1000, 2000, 3000]
