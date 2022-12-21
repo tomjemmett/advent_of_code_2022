@@ -155,3 +155,6 @@ reduceIntervals (a@(a1, a2) : b@(b1, b2) : xs)
   | otherwise = a : reduceIntervals (b : xs)
   where
     i = intervalsIntersect a b
+
+enumerate :: (Bounded a, Enum a) => [a]
+enumerate = [minBound .. maxBound]

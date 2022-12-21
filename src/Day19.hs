@@ -4,86 +4,118 @@ module Day19
 where
 
 import Common
-import Text.Parsec ((<|>))
+import Control.Monad
+import Control.Monad.State
+import Data.HashMap.Strict (HashMap, (!), (!?))
+import Data.HashMap.Strict qualified as H
+import Data.Hashable
+import Data.Maybe
+import Data.Traversable
 import Text.Parsec qualified as P
-import Text.Parsec.Text (Parser)
-
-type Resources = [Int]
-
-type Robots = [Int]
-
-type Blueprint = [Resources]
-
-type State = (Resources, Robots)
-
-testInput =
-  "Blueprint 1: \
-  \Each ore robot costs 4 ore. \
-  \Each clay robot costs 2 ore. \
-  \Each obsidian robot costs 3 ore and 14 clay. \
-  \Each geode robot costs 2 ore and 7 obsidian. \n\
-  \\
-  \Blueprint 2: \
-  \Each ore robot costs 2 ore. \
-  \Each clay robot costs 3 ore. \
-  \Each obsidian robot costs 3 ore and 8 clay. \
-  \Each geode robot costs 3 ore and 12 obsidian."
-
-i = parseInput testInput
-
-bps = head i
-
-maxR = init $ foldl1 (zipWith max) bps
+import Text.Parsec.String (Parser)
 
 day19 :: AOCSolution
-day19 input = show <$> [p1, p2]
+day19 input = show <$> ([part1, part2] <*> pure (parseInput input))
   where
-    i = parseInput input
-    p1 = sum $ zipWith (*) [1 ..] $ map (solve 24) i
-    p2 = product $ map (solve 32) $ take 3 i
+    part1 = sum . zipWith (*) [1 ..] . map (solve 24)
+    part2 = product . map (solve 32) . take 3
 
-parseInput :: String -> [Blueprint]
-parseInput = map (parse' p id) . lines
+data Resource
+  = Ore
+  | Clay
+  | Obsidian
+  | Geode
+  deriving (Bounded, Enum, Eq, Ord)
+
+instance Show Resource where
+  show Ore = "ore"
+  show Clay = "clay"
+  show Obsidian = "obsidian"
+  show Geode = "geode"
+
+instance Read Resource where
+  readsPrec _ =
+    (: []) . (,[]) . \case
+      "ore" -> Ore
+      "clay" -> Clay
+      "obsidian" -> Obsidian
+      "geode" -> Geode
+      _ -> undefined
+
+instance Hashable Resource where
+  hashWithSalt s = hashWithSalt s . fromEnum
+
+type Input = [Blueprint]
+
+type Blueprint = HashMap Resource Cost
+
+type Cost = HashMap Resource Int
+
+type Robots = HashMap Resource Int
+
+type Stock = HashMap Resource Int
+
+none :: HashMap Resource Int
+none = H.fromList [(r, 0) | r <- enumerate]
+
+parseInput :: String -> Input
+parseInput = map (parse' blueprint id) . lines
   where
-    p = do
-      P.string "Blueprint " *> number
-      a1 <- P.string ": Each ore robot costs " *> number
-      b1 <- P.string " ore. Each clay robot costs " *> number
-      c1 <- P.string " ore. Each obsidian robot costs " *> number
-      c2 <- P.string " ore and " *> number
-      d1 <- P.string " clay. Each geode robot costs " *> number
-      d3 <- P.string " ore and " *> number
-      P.string " obsidian."
-      pure
-        [ [a1, 0, 0, 0],
-          [b1, 0, 0, 0],
-          [c1, c2, 0, 0],
-          [d1, 0, d3, 0]
-        ]
+    blueprint = do
+      P.string "Blueprint "
+      number
+      P.string ": "
+      H.fromList <$> robot `P.sepBy` P.char ' '
+    robot = do
+      P.string "Each "
+      target <- resource
+      P.string " robot costs "
+      costList <- fmap H.fromList $ cost `P.sepBy` P.string " and "
+      P.string "."
+      pure (target, costList)
+    cost = do
+      n <- number
+      P.char ' '
+      r <- resource
+      pure (r, n)
+    resource :: Parser Resource
+    resource = read <$> P.many P.letter
+
+triangle :: Int -> Int
+triangle n = n * succ n `div` 2
 
 solve :: Int -> Blueprint -> Int
-solve t bps = go t 0 ([0, 0, 0, 0], [1, 0, 0, 0])
+solve time bp = evalState (go time (H.insert Ore 1 none) none) 0
   where
-    maxR = init $ foldl1 (zipWith max) bps
-    go :: Int -> Int -> State -> Int
-    -- we have reached the end time, return either the current best, or the number of geodes produced
-    go 0 !best (last -> !ge, _) = max best ge
-    go t !best (!rcs, !rbs)
-      -- if this state can't beat the current best, don't attempt it
-      | (t * pred t `div` 2) + last rcs + last rbs * t <= best = best
-      -- if we can produce the geode robot, just do that
-      | last cp = go (pred t) best $ last nx
-      -- dfs next states
-      | otherwise = foldl (go (pred t)) best ns
+    maxR = foldl1 (H.unionWith max) $ H.elems bp
+    recipes = H.toList bp
+    go :: Int -> Robots -> Stock -> State Int Int
+    go t robots bag = do
+      let delays = mapMaybe getDelay recipes
+          wait = t * robots ! Geode + bag ! Geode
+      best <- get
+      if best >= wait + triangle (pred t)
+        then pure 0
+        else do
+          paths <- traverse getPaths delays
+          let r = maximum $ wait : paths
+          modify $ max r
+          pure r
       where
-        -- do we have enough resources to produce using a given blueprint?
-        cp = map (and . zipWith (>=) rcs) bps
-        -- should we manufacture this robot, or do we already have enough?
-        cm = zipWith (&&) cp $ zipWith (>=) maxR rcs
-        -- get the next ore/clay/obsidian resources/robots
-        nx =
-          zip
-            (zipWith (+) rbs . zipWith (-) rcs <$> bps)
-            (zipWith (+) rbs <$> [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-        -- filter nx based on cm, and prepend the "null" option of just producing resources
-        ns = (zipWith (+) rbs rcs, rbs) : map snd (filter fst $ zip cm nx)
+        getDelay :: (Resource, Cost) -> Maybe (Resource, Cost, Int)
+        getDelay (target, cost) = do
+          waitTimes <- flip H.traverseWithKey cost \resource amountNeeded ->
+            case robots ! resource of
+              0 -> Nothing
+              r -> Just $ div (max 0 (amountNeeded - bag ! resource) + r - 1) r
+          let delay = maximum waitTimes + 1
+          guard $ t > delay
+          when (target /= Geode) $
+            guard $ (maxR ! target - robots ! target) * t > bag ! target
+          pure (target, cost, delay)
+        getPaths :: (Resource, Cost, Int) -> State Int Int
+        getPaths (target, cost, delay) =
+          go
+            (t - delay)
+            (H.insertWith (+) target 1 robots)
+            (H.unionWith (-) (H.unionWith (+) bag $ fmap (delay *) robots) cost)
