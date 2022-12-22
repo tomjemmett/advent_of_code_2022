@@ -158,3 +158,5 @@ reduceIntervals (a@(a1, a2) : b@(b1, b2) : xs)
 
 enumerate :: (Bounded a, Enum a) => [a]
 enumerate = [minBound .. maxBound]
+
+splitDoubleNewlines = splitOn "\n\n"
