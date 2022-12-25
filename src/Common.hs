@@ -6,6 +6,7 @@ import Data.Char (digitToInt)
 import Data.Foldable (toList)
 import Data.List (sort, sortBy)
 import Data.List.Split (splitOn)
+import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Vector ((!), (!?))
 import Data.Vector qualified as V
@@ -159,4 +160,8 @@ reduceIntervals (a@(a1, a2) : b@(b1, b2) : xs)
 enumerate :: (Bounded a, Enum a) => [a]
 enumerate = [minBound .. maxBound]
 
+splitDoubleNewlines :: [Char] -> [[Char]]
 splitDoubleNewlines = splitOn "\n\n"
+
+countReduce :: (Foldable t, Ord a) => t a -> M.Map a Int
+countReduce = foldr (flip (M.insertWith (+)) 1) M.empty
