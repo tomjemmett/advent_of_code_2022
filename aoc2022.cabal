@@ -18,7 +18,7 @@ maintainer:         thomas.jemmett@nhs.net
 
 common shared-properties
     build-depends:
-        base ^>=4.15.0.0,
+        base ^>=4.16.4.0,
         array,
         containers,
         unordered-containers,
